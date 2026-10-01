@@ -1,6 +1,6 @@
 # NBA Fantasy Assistant — Plan
 
-Status: requirements agreed, architecture next.
+Status: requirements and architecture agreed; M0 spike next.
 Last updated: 2026-10-01
 
 ## Context
@@ -23,7 +23,11 @@ A personal assistant for Yahoo NBA fantasy leagues (H2H categories). It is a sep
 | Team | Solo for now. |
 | Timeline | No rush. Built in milestones that are each usable. |
 | Stats source | `nba_api` (stats.nba.com) from my home IP, cached. Yahoo player stats as fallback. |
-| Tooling (proposed) | Python 3.12+, `uv`, `ruff`, `pyright`, `pytest`. Storage: parquet cache + SQLite for the recommendation log, snapshots and job runs. Confirm in the architecture. |
+| Tooling | Python 3.12+, `uv`, `ruff`, `pyright`, `pytest`. |
+| Storage | Parquet datasets + SQLite records (ADR 0003). |
+| Yahoo OAuth | Own small module, tokens in the macOS Keychain (ADR 0006). |
+| Injury source | Chosen in the M0 spike (official NBA report, ESPN, or Yahoo status). |
+| Architecture | Ports and adapters with an explicit `as_of`; see `docs/ARCHITECTURE.md` and `docs/decisions/`. |
 | Commercial use | Not designed for now. Would require licensed data, hosting, accounts. Revisit after the season with the recommendation log as evidence. |
 
 ## Test leagues
@@ -170,4 +174,9 @@ The backtest harness is in M2, before the advice tools, so advice is never built
 
 ## Next step
 
-Architecture: components and boundaries, data model (leagues, teams, players, games, projections, recommendations), daily job data flow, the five extension interfaces, and the repo layout.
+M0 spike (see `docs/ARCHITECTURE.md` §15 for the items to verify):
+
+- Before it starts (me): register a Yahoo Developer app with Fantasy Sports read permission, join the public league, set up the family league.
+- `scripts/spike/`: `yahoo_auth.py`, `yahoo_probe.py`, `nba_probe.py`, `crosswalk_probe.py`.
+- Findings in `docs/spikes/M0-findings.md`; resolve every "(verify)" note and revise the architecture.
+- Exit criteria: OAuth login and refresh work; settings parsed for both leagues; free agent pagination works; `nba_api` works from home; ≥ 98% of rostered players auto-matched to NBA IDs.

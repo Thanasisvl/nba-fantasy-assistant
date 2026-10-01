@@ -5,7 +5,7 @@ Personal assistant for Yahoo NBA fantasy leagues (H2H categories). Single user, 
 ## Read first
 
 - `docs/PLAN.md`: decisions, objectives (O1–O8), requirements (FR-*), milestones (M0–M5), backlog. It is the source of truth for scope.
-- `docs/ARCHITECTURE.md`: components, data model, interfaces (once written).
+- `docs/ARCHITECTURE.md`: components, interfaces, data model, flows. Source of truth for structure. Decision records in `docs/decisions/`.
 - Skill `nba-fantasy-domain`: fantasy and statistics rules. Use it for projections, valuation, matchups, streaming, punting, backtests.
 - Skill `nfa-engineering`: code structure, adapters, testing, and safety conventions. Use it for any code change.
 

@@ -30,28 +30,11 @@ adapters/  platforms/  sources/  notifiers/  store/   # implement domain interfa
 - Dependencies point inward. `domain` imports nothing from the other layers. Services depend on interfaces, not concrete adapters; a small composition module (e.g. `nfa/wiring.py`) builds the concrete objects.
 - Pass the "as of" date and time in explicitly. Never call `date.today()` or `datetime.now()` inside domain or services; take it from the caller. Backtests replay dates by passing a different `as_of`.
 - UI and jobs are thin. If a Streamlit page computes something, move it to a service so the digest and tests can reuse it.
-- Proposed package layout (provisional until `docs/ARCHITECTURE.md`):
-
-```
-src/nfa/
-  domain/       types.py, interfaces.py, projections.py, valuation.py, matchup.py, usable_games.py, punt.py
-  services/     board.py, matchup.py, streaming.py, digest.py, scorecard.py, health.py
-  adapters/
-    platforms/  yahoo.py
-    sources/    nba_stats.py, injuries.py
-    notifiers/  email.py
-    store/      files.py
-  jobs/         daily.py, backfill.py
-  ui/           app.py, pages/
-  wiring.py     config.py
-tests/          unit/, adapters/, services/, fixtures/
-scripts/        one-off tools (spikes, crosswalk audit, backtest runner)
-docs/           PLAN.md, ARCHITECTURE.md, decisions/
-```
+- The package layout, interfaces, data model and flows are defined in `docs/ARCHITECTURE.md` (§4–§7). Put new code where the layout says; if it has no home there, update the architecture doc in the same change.
 
 ## 2. The five interfaces
 
-Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. Signatures are sketched in `references/domain-types.md`.
+Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. The agreed signatures are in `docs/ARCHITECTURE.md` §5. Injury statuses are part of `StatsSource`; a composite source combines `nba_api` with the injury provider.
 
 | Interface | v1 implementation | Later |
 |---|---|---|
@@ -82,9 +65,10 @@ Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. 
 
 ## 5. Storage
 
-- `data/` is gitignored except committed overrides. Layout: `data/cache/` (raw and normalized fetches, parquet), `data/app.sqlite` (recommendation log, snapshots, job runs, health), `data/snapshots/` (large inputs if needed).
+- `data/` is gitignored except `data/crosswalk_overrides.json`. Parquet datasets under `data/cache/` (append-only, versioned, written atomically); records in `data/app.sqlite` (WAL mode). Full layout and tables: `docs/ARCHITECTURE.md` §6, ADR 0003.
 - Schema changes go through numbered migrations (plain SQL files applied in order). Never edit a table by hand.
-- Snapshots must be enough to recompute a recommendation: store the input IDs and the versions of the code and config that produced it.
+- A snapshot is a manifest of dataset versions plus git commit, model version and config hash, enough to recompute a recommendation without copying data.
+- `Store.read_dataset(name, as_of)` is the single place that cuts off data after `as_of`; never filter by date ad hoc elsewhere.
 
 ## 6. Recommendations
 

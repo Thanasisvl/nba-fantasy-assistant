@@ -6,7 +6,7 @@ It advises; it never makes moves on Yahoo. It runs locally on one machine for on
 
 ## Status
 
-Planning is done; building has not started. Next milestone: **M0, a data access spike** (Yahoo OAuth, league settings and free agents, NBA game logs, player ID matching).
+Planning and architecture are done; building has not started. Next milestone: **M0, a data access spike** (Yahoo OAuth, league settings and free agents, NBA game logs, player ID matching).
 
 | Milestone | Delivers |
 |---|---|
@@ -49,6 +49,8 @@ Python 3.12+, `uv`, Streamlit (local UI), `nba_api` for NBA stats, the Yahoo Fan
 | Path | Contents |
 |---|---|
 | `docs/PLAN.md` | Decisions, objectives, requirements, milestones, backlog |
+| `docs/ARCHITECTURE.md` | Components, interfaces, data model, flows, resilience, extensibility |
+| `docs/decisions/` | Architecture decision records |
 | `CLAUDE.md` | Project rules for AI-assisted development |
 | `.claude/skills/nba-fantasy-domain/` | Fantasy and statistics rules: z-scores, ratio categories, usable games, win probabilities, calibration |
 | `.claude/skills/nfa-engineering/` | Code conventions: layers, interfaces, adapters, testing, secrets |

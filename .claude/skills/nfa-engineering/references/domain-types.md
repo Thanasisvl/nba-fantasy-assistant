@@ -1,6 +1,6 @@
-# Domain types and interfaces (sketch)
+# Domain types (sketch)
 
-A starting sketch to keep naming and boundaries consistent. Refine it in `docs/ARCHITECTURE.md`; when they differ, the architecture doc wins and this file should be updated.
+Code-level sketch of the core types and the recommendation object. **`docs/ARCHITECTURE.md` is authoritative** for the interfaces (§5) and the entity list (§6); the interface sketch at the end of this file is superseded by §5 and kept only as an illustration. When they differ, follow the architecture doc and update this file.
 
 ## Core types
 
