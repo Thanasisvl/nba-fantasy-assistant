@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments and tooling caches
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Local data: caches, database, snapshots, logs.
+# Fetched NBA and Yahoo data is for personal use and must never be committed.
+data/*
+!data/crosswalk_overrides.json
+*.parquet
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and local config (commit config.example.toml instead)
+config.toml
+.env
+.env.*
+*.token
+*.secret
+oauth*.json
+secrets/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
