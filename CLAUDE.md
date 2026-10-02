@@ -11,6 +11,7 @@ Personal assistant for Yahoo NBA fantasy leagues (H2H categories). Single user, 
 
 ## Rules that always apply
 
+- **Ask before any git commit, push or merge.** Prepare the change, show the files and message (or the branch and remote), and wait for an explicit yes. One approval covers one action.
 - **Yahoo is read-only.** Request only the read scope. Never call endpoints that change rosters, lineups, trades or settings, even if asked casually; that is a backlog item needing its own design.
 - **Secrets stay out of git.** OAuth tokens, client secrets and SMTP passwords live in the macOS Keychain or a gitignored file. Never print or log them.
 - **Tests never hit the network.** Use recorded fixtures.

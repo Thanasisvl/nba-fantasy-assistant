@@ -113,7 +113,8 @@ Details and patterns in `references/testing.md`. In short:
 
 ## 11. Git and docs
 
-- Branch per piece of work (`m1/crosswalk`, `m2/backtest-harness`), small commits with clear messages, merge to `main` when tests pass.
+- **Ask the user before every commit, push or merge**, showing what will be committed or pushed, and wait for an explicit yes. One approval covers one action.
+- Branch per piece of work (`m1/crosswalk`, `m2/backtest-harness`), small commits with clear messages, merge to `main` when tests pass and the user approves.
 - If a change alters a decision, requirement or milestone, update `docs/PLAN.md` (and `docs/ARCHITECTURE.md`) in the same change. Record significant design choices as short ADRs in `docs/decisions/NNNN-title.md` (context, decision, consequences).
 - Build what the current milestone needs. Put good ideas in the plan's backlog instead of building them.
 
