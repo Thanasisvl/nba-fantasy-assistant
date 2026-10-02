@@ -1,0 +1,39 @@
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from nfa.adapters.http import Throttle
+
+
+@dataclass
+class FakeResponse:
+    status_code: int
+    content: bytes = b"{}"
+
+
+class FakeSession:
+    """Replays outcomes in order; an outcome may be a FakeResponse or an exception."""
+
+    def __init__(self, outcomes: list[Any]) -> None:
+        self.outcomes = list(outcomes)
+        self.calls: list[dict[str, Any]] = []
+
+    def get(
+        self,
+        url: str,
+        *,
+        params: Mapping[str, str] | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> FakeResponse:
+        self.calls.append(
+            {"method": "GET", "url": url, "params": params, "headers": headers, "timeout": timeout}
+        )
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+
+def no_wait_throttle() -> Throttle:
+    return Throttle({}, sleep=lambda _s: None, monotonic=lambda: 0.0)

@@ -1,0 +1,10 @@
+# Copy to config.toml (gitignored) and adjust.
+data_dir = "data"
+
+# Minimum seconds between requests, per source.
+[throttle_s]
+yahoo = 1.0
+nba_api = 0.6
+cdn_nba = 1.0
+espn = 1.0
+nba_injury_report = 2.0
