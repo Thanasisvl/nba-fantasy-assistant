@@ -1,10 +1,10 @@
 # NBA Fantasy Assistant
 
-Personal assistant for Yahoo NBA fantasy leagues (H2H categories). Single user, runs locally on a Mac: Streamlit UI, a daily launchd job, and a daily email digest. It advises; it never makes moves on Yahoo.
+Personal assistant for Yahoo NBA fantasy leagues (H2H categories). Single user, runs locally on a Mac: Streamlit UI (the Today page is the main surface), launchd jobs that record data daily, and a short daily email. It advises; it never makes moves on Yahoo.
 
 ## Read first
 
-- `docs/PLAN.md`: decisions, objectives (O1–O8), requirements (FR-*), milestones (M0–M5), backlog. It is the source of truth for scope.
+- `docs/PLAN.md`: decisions, objectives (O1–O8), requirements (FR-*), milestones (M0–M6), backlog. It is the source of truth for scope.
 - `docs/ARCHITECTURE.md`: components, interfaces, data model, flows. Source of truth for structure. Decision records in `docs/decisions/`.
 - Skill `nba-fantasy-domain`: fantasy and statistics rules. Use it for projections, valuation, matchups, streaming, punting, backtests.
 - Skill `nfa-engineering`: code structure, adapters, testing, and safety conventions. Use it for any code change.
