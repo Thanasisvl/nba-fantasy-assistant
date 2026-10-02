@@ -1,6 +1,6 @@
 ---
 name: nba-fantasy-domain
-description: Fantasy basketball and statistics rules for the NBA Fantasy Assistant (Yahoo H2H categories). Use this whenever you work on projections, minutes, injuries, player valuation or z-scores, matchup win probabilities, the streaming/waiver ranker, usable games, lineup checks, punt analysis, the recommendation log, backtests or calibration — even if the request only says "rank pickups", "fix the projection", "why did it suggest X" or "is this number right".
+description: Fantasy basketball and statistics rules for the NBA Fantasy Assistant (Yahoo H2H categories). Use this whenever you work on projections, minutes, injuries, player valuation or z-scores, matchup win probabilities, the streaming/waiver ranker, usable games, lineup checks, punt analysis, pre-draft rankings, model baselines, the recommendation log, backtests or calibration — even if the request only says "rank pickups", "fix the projection", "why did it suggest X" or "is this number right".
 ---
 
 # NBA fantasy domain rules
@@ -53,6 +53,7 @@ FG% and FT% are ratios of weekly sums, not averages of player percentages. A 90%
 - **Injury minutes:** when a rotation player is Out, his expected minutes go to available teammates. Do not add them again if his absence is already in teammates' recent averages; take them back when he returns. How the minutes are split (by position, role, starters vs bench) and any per-player cap are **open decisions**: derive them from NBA data and confirm them with the user. The EuroLeague tool has a version of this idea; its numbers do not apply (see `references/euroleague-lessons.md`).
 - **Windows:** today, rest of week, rest of season. A window projection is per game × the player's games in the window × probability he plays.
 - Separate "who will play" (status, minutes) from "how well" (rates). They fail in different ways and need different data sources.
+- **Data for the minutes model.** On last season, absences inferred from box scores may be used to fit redistribution given who played, never as statuses "known that morning" in a replay. From 2026-27 the recorder captures real statuses; refit on them after the season.
 
 ## 5. Matchups and win probability
 
@@ -88,8 +89,15 @@ FG% and FT% are ratios of weekly sums, not averages of player percentages. A 90%
 - **No look-ahead.** When replaying a past date, use only data available that morning: stats through the previous day, injury status as known then, rosters as they were. Leakage makes every model look great and is the most common backtest bug.
 - Replay **walk-forward**, day by day, not one train/test split. The question we care about is "what would the tool have said that morning".
 - Measure projection error per category (MAE and bias) and **calibration**: bucket predicted probabilities (50–60%, 60–70%, …) and compare to actual win rates. A model that says 70% must win about 70% of the time.
-- Compare every model change against a simple baseline (season average × games). A complex model that does not beat the baseline is not worth keeping.
+- **Baselines and the acceptance gate** (ADR 0010): compare every model with season average × games and with Yahoo's recorded ranks and projections. A model goes live only if it beats both on error and calibration; otherwise use the baseline and say so. The margins are an open decision.
 - Prefer a simpler model that is calibrated over a clever one that is not.
+
+## 10. Pre-draft rankings
+
+- Rank by **season-long value** in each league: per-game z-values × expected games, over that league's pool and categories.
+- Produce one ranking with no punt and one per punt build the user chooses; punted categories get weight 0.
+- Season projections come from last season's rates, shrunk, and a minutes estimate with an uncertainty range. Show the range; a rookie or a player changing team is less certain than a veteran in the same role.
+- The draft sheet is a cheat sheet, not a live board: no pick tracking.
 
 ## Common traps (quick check before you finish)
 
@@ -101,3 +109,4 @@ FG% and FT% are ratios of weekly sums, not averages of player percentages. A 90%
 - Ranking by total value for a weekly decision that should use need weights.
 - Treating Questionable as certain to play, or Out as permanent.
 - A recommendation without numbers in its reasons.
+- A model shipped without beating the season-average and Yahoo baselines.

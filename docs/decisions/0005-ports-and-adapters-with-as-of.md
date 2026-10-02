@@ -1,6 +1,6 @@
 # 0005. Ports and adapters, with an explicit as_of
 
-Date: 2026-10-01 · Status: accepted
+Date: 2026-10-01 · Status: accepted, amended 2026-10-02
 
 ## Context
 
@@ -8,7 +8,7 @@ The tool must grow without rewrites (new formats, platforms, sources, notifiers)
 
 ## Decision
 
-- Layers: domain (pure) ← services ← ui/jobs, with adapters implementing domain protocols (`FantasyPlatform`, `StatsSource`, `ScoringFormat`, `Notifier`, `Store`). An import-rule test enforces the direction.
+- Layers: domain (pure) ← services ← ui/jobs, with adapters implementing domain protocols (`FantasyPlatform`, `StatsSource`, `InjuryFeed`, `ScoringFormat`, `Notifier`, `Store`; see ADR 0009). Source adapters are split into fetch and pure parse halves (ADR 0008). An import-rule test enforces the direction.
 - Every time-dependent call takes `as_of`. Only `clock.py`, used by ui, jobs and wiring, reads the real time.
 
 ## Consequences

@@ -6,12 +6,13 @@
 tests/
   conftest.py          # blocks network, shared builders
   unit/                # domain: pure functions, hand-built inputs
-  adapters/            # parse recorded fixtures into domain types
+  adapters/            # run recorded raw files through parsers
   services/            # use cases with fake adapters
   backtest/            # look-ahead and replay tests
   fixtures/
-    yahoo/             # recorded JSON, secrets and names of private-league members removed
-    nba_api/           # small recorded responses (trimmed to a few players/games)
+    raw/yahoo/         # recorded RawResponse files, scrubbed
+    raw/nba_api/       # recorded RawResponse files, scrubbed
+    raw/injuries/      # recorded RawResponse files, scrubbed
 ```
 
 ## Block the network
@@ -30,7 +31,7 @@ def _no_network(monkeypatch):
 
 ## Recording fixtures
 
-- Record a real response once with a script in `scripts/` (e.g. `scripts/record_yahoo_fixture.py league-settings`).
+- Fixtures are raw files from the recorder (or the M0 spike), copied with `scripts/scrub_fixture.py`.
 - Before saving: remove tokens and headers, replace other managers' names and emails with placeholders, trim player lists to what the test needs.
 - Name fixtures after what they contain (`settings_9cat_12team.json`, `settings_8cat_no_to.json`, `scoreboard_week3_midweek.json`).
 - Keep one fixture per league variant we care about: that is how we prove settings are read, not hardcoded.
@@ -49,13 +50,15 @@ def _no_network(monkeypatch):
 
 ## Service tests
 
-- Use fake implementations of the interfaces (in-memory `FakePlatform`, `FakeStats`, `FakeStore`, `FakeNotifier` that records sends).
+- Use fake implementations of the interfaces (in-memory `FakePlatform`, `FakeStats`, `FakeInjuryFeed`, `FakeStore`, `FakeNotifier` that records sends).
 - Test failure paths: a source raises → service returns cached data marked stale and records the failure.
 - Daily job: running twice with the same `as_of` sends one email and writes one set of log entries.
+- Recorder: a fetch failure records a health event and a gap, and the other sources still run.
 
 ## Backtest tests
 
 - Given data spanning several days, replaying `as_of = D` must not see any stat line with `game_date >= D` or any status published after the morning of `D`. Assert it directly by feeding a sentinel future row that would change the result.
+- A raw file with `fetched_at` after `as_of` is invisible to the replay.
 - Calibration code: on synthetic predictions with known frequencies, buckets come out as expected.
 
 ## What not to test

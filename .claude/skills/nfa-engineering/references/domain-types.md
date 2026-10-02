@@ -1,6 +1,6 @@
 # Domain types (sketch)
 
-Code-level sketch of the core types and the recommendation object. **`docs/ARCHITECTURE.md` is authoritative** for the interfaces (§5) and the entity list (§6); the interface sketch at the end of this file is superseded by §5 and kept only as an illustration. When they differ, follow the architecture doc and update this file.
+Code-level sketch of the core types and the recommendation object. **`docs/ARCHITECTURE.md` is authoritative** for the interfaces (§5) and the entity list (§6); the interface sketch that used to end this file was removed; see §5. When they differ, follow the architecture doc and update this file.
 
 ## Core types
 
@@ -87,42 +87,11 @@ class Recommendation:
     model_version: str
 ```
 
-## Interfaces
+## Interfaces and raw types
 
-```python
-from typing import Protocol
-
-class FantasyPlatform(Protocol):
-    def my_leagues(self, season: str) -> list[LeagueKey]: ...
-    def settings(self, league: LeagueKey) -> LeagueSettings: ...
-    def my_teams(self, league: LeagueKey) -> list[TeamKey]: ...
-    def roster(self, team: TeamKey, on: date) -> "Roster": ...
-    def matchup(self, team: TeamKey, week: int) -> "Matchup": ...
-    def available_players(self, league: LeagueKey, limit: int) -> list["AvailablePlayer"]: ...
-    def player_ids(self, league: LeagueKey) -> list["PlatformPlayer"]: ...   # for the crosswalk
-
-class StatsSource(Protocol):
-    def game_logs(self, season: str, since: date | None = None) -> list[StatLine]: ...
-    def schedule(self, season: str) -> list["ScheduledGame"]: ...
-    def players(self, season: str) -> list["SourcePlayer"]: ...
-
-class ScoringFormat(Protocol):
-    def player_values(self, projections: list[Projection], settings: LeagueSettings,
-                      weights: dict[str, float] | None = None) -> dict[PlayerId, float]: ...
-    def matchup_outlook(self, mine: "WeekState", theirs: "WeekState",
-                        settings: LeagueSettings) -> "MatchupOutlook": ...
-
-class Notifier(Protocol):
-    def send(self, subject: str, html: str, text: str) -> None: ...
-
-class Store(Protocol):
-    def save_frame(self, name: str, frame, fetched_at: datetime, source: str) -> None: ...
-    def load_frame(self, name: str) -> tuple[object, datetime | None]: ...
-    def log_recommendations(self, recs: list[Recommendation]) -> None: ...
-    def record_run(self, run_key: str, step: str, ok: bool, detail: str = "") -> None: ...
-```
+See `docs/ARCHITECTURE.md` §5: `FetchRequest`, `RawResponse`, `RecordScope`, `DatasetRows` (in `domain/raw.py`) and the protocols `Fetcher`, `Parser`, `FantasyPlatform`, `StatsSource`, `InjuryFeed`, `ScoringFormat`, `Notifier`, `Store` (in `domain/interfaces.py`).
 
 Notes:
 - `Roster`, `Matchup`, `WeekState`, `MatchupOutlook`, `AvailablePlayer`, `ScheduledGame` and the player records are small frozen dataclasses defined alongside these.
 - `WeekState` = accumulated stats so far + remaining projected player-games in active slots.
-- `as_of` flows through every call that depends on time.
+- `as_of` flows through every call that depends on time; raw-derived dataset rows carry `observed_at`.
