@@ -4,12 +4,13 @@ Working notes for the Yahoo adapter. Items marked (verify) must be confirmed in 
 
 ## App registration and OAuth2
 
-- Register an app at the Yahoo Developer Network with **Fantasy Sports: Read** permission only.
+- App registered 2026-10-02 (ADR 0006): **Confidential Client**, **Fantasy Sports – Read** only.
 - Authorization code flow:
   - Authorize: `https://api.login.yahoo.com/oauth2/request_auth?client_id=…&redirect_uri=…&response_type=code`
   - Token: `POST https://api.login.yahoo.com/oauth2/get_token` with the code (and later the refresh token), HTTP Basic auth with client ID and secret.
 - Access tokens expire after about an hour; refresh tokens are long-lived. Store both, refresh before expiry, and handle refresh failure by asking for a new login.
-- Redirect URI: Yahoo is strict about redirect URIs (HTTPS; `oob` for out-of-band copy-paste has historically been supported) (verify). For a local tool, the copy-paste code flow is acceptable for a one-time login.
+- Redirect URI: `https://localhost:8765/callback` (accepted at registration). M0 decides between a local listener on 8765 and pasting the redirected URL; `oob` is not used.
+- Credentials: Keychain service `nba-fantasy-assistant`, accounts `yahoo_client_id`, `yahoo_client_secret`; tokens in `yahoo_tokens`.
 - **Decision (ADR 0006): we write our own small OAuth module** (`adapters/platforms/yahoo/auth.py`) with `requests` and `keyring`, rather than `yahoo_oauth`. Libraries like `yfpy` / `yahoo_fantasy_api` are useful references for endpoint shapes, but are not dependencies.
 
 ## Base URL and format
@@ -44,6 +45,8 @@ Working notes for the Yahoo adapter. Items marked (verify) must be confirmed in 
 | Player stats | `league/{league_key}/players;player_keys=…/stats;type=date;date=YYYY-MM-DD` (or `type=season`, `type=lastweek`) |
 | Ownership | `…/players;player_keys=…/percent_owned` |
 | Transactions | `league/{league_key}/transactions` |
+| Player ranks | `league/{league_key}/players;sort=AR` (actual rank) and `sort=OR` (preseason/overall rank) (verify) |
+| Player projections | not documented; look for projected stats in `players/…/stats;type=…` (verify in M0) |
 
 - Sub-resources chain with `/` and filters with `;key=value`. Multiple keys are comma-separated (`player_keys=a,b,c`).
 - `settings` includes `stat_categories` (id, name, display name, sort order, display-only flag), `roster_positions`, `max_weekly_adds` / acquisition limits, week dates and playoff settings (verify exact field names on the real leagues and record them here).

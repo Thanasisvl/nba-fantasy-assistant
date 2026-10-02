@@ -1,11 +1,11 @@
 ---
 name: nfa-engineering
-description: Engineering conventions for the NBA Fantasy Assistant codebase — layering, the five extension interfaces (platform, stats source, scoring format, notifier, store), Yahoo Fantasy API and nba_api adapters, OAuth and secrets, caching, resilience and data age, domain types, recommendation objects, the daily launchd job, the email digest, tests with fixtures, tooling and definition of done. Use this for any code change in this repo: new modules, data sources, Streamlit pages, jobs, refactors, reviews or debugging — even small fixes.
+description: Engineering conventions for the NBA Fantasy Assistant codebase — layering, the six extension interfaces (platform, stats source, injury feed, scoring format, notifier, store), fetch/parse adapters and the raw store, the recorder jobs, Yahoo Fantasy API and nba_api adapters, OAuth and secrets, caching, resilience and data age, domain types, recommendation objects, the launchd jobs (daily, snapshot, backup), the nudge email, tests with fixtures, tooling and definition of done. Use this for any code change in this repo: new modules, data sources, Streamlit pages, jobs, refactors, reviews or debugging — even small fixes.
 ---
 
 # Engineering conventions
 
-The design goal is **growth without rewrites** (objective O4 in `docs/PLAN.md`): a new league is config; a new format, platform, data source or notifier is one new adapter. Most rules below protect that goal. When `docs/ARCHITECTURE.md` exists, it overrides layout details here; keep the two consistent.
+The design goal is **growth without rewrites** (objective O4 in `docs/PLAN.md`): a new league is config; a new format, platform, data source or notifier is one new adapter. Most rules below protect that goal. `docs/ARCHITECTURE.md` overrides layout details here; keep the two consistent.
 
 | Reference | Read it when |
 |---|---|
@@ -17,32 +17,34 @@ The design goal is **growth without rewrites** (objective O4 in `docs/PLAN.md`):
 ## 1. Layers and dependency direction
 
 ```
-ui/ (Streamlit)    jobs/ (daily run, backfill)
+ui/ (Streamlit)    jobs/ (daily, snapshot, backup, rebuild, backfill, backtest)
           \            /
            services/              # use cases: board, matchup, streaming, digest, scorecard, health
                |
             domain/               # pure logic + types + interfaces (Protocols)
                ^
-adapters/  platforms/  sources/  notifiers/  store/   # implement domain interfaces
+adapters/: fetch (I/O) → raw store → parse (pure)   notifiers/  store/
 ```
 
 - **Domain is pure:** no network, files, environment, clocks, randomness without a seed, or Streamlit. Inputs in, results out. That is what makes it testable and backtestable: a backtest is the domain run against historical inputs.
+- **Parsers are pure** like the domain: raw response in, dataset rows out. That makes recorded raw files the test fixtures and lets `rebuild` replay them.
 - Dependencies point inward. `domain` imports nothing from the other layers. Services depend on interfaces, not concrete adapters; a small composition module (e.g. `nfa/wiring.py`) builds the concrete objects.
 - Pass the "as of" date and time in explicitly. Never call `date.today()` or `datetime.now()` inside domain or services; take it from the caller. Backtests replay dates by passing a different `as_of`.
 - UI and jobs are thin. If a Streamlit page computes something, move it to a service so the digest and tests can reuse it.
 - The package layout, interfaces, data model and flows are defined in `docs/ARCHITECTURE.md` (§4–§7). Put new code where the layout says; if it has no home there, update the architecture doc in the same change.
 
-## 2. The five interfaces
+## 2. The six interfaces
 
-Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. The agreed signatures are in `docs/ARCHITECTURE.md` §5. Injury statuses are part of `StatsSource`; a composite source combines `nba_api` with the injury provider.
+Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. Source adapters (`FantasyPlatform`, `StatsSource`, `InjuryFeed`) are a fetcher plus a parser; their contract is the datasets they produce (`domain/datasets.py`). Signatures: `docs/ARCHITECTURE.md` §5.
 
 | Interface | v1 implementation | Later |
 |---|---|---|
 | `FantasyPlatform` | Yahoo | ESPN, Sleeper |
 | `StatsSource` | `nba_api` | Yahoo stats fallback, licensed feed |
+| `InjuryFeed` | provider chosen in M0 | another provider |
 | `ScoringFormat` | H2H categories | points, roto |
 | `Notifier` | email (SMTP) | Telegram, Slack |
-| `Store` | local files (parquet + SQLite) | hosted DB |
+| `Store` | local raw files + parquet + SQLite | hosted DB |
 
 - Adapters translate external shapes into domain types **at the boundary**. Yahoo JSON/XML and `nba_api` DataFrames never leak past the adapter.
 - An adapter may only depend on its own external library plus the domain. Two adapters never call each other; services combine them.
@@ -57,7 +59,7 @@ Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. 
 
 ## 4. Adapters, caching and resilience
 
-- **Cache every fetch.** Final box scores are immutable: fetch each game once. Re-fetch only what changes (schedule, injuries, rosters, free agents, matchups) and decide a max age per dataset.
+- **Record, don't just cache.** Responses for data that cannot be fetched again are kept raw (ADR 0008). Final box scores are fetched once. Decide per dataset whether its raw response is retained (`retain_raw`).
 - **Be polite:** throttle, set a timeout on every request, retry transient errors with exponential backoff and jitter (max ~3 tries), never retry auth errors.
 - Every dataset carries `fetched_at` and `source`. A fetch returns either fresh data or a typed failure; the service falls back to the cache and records the failure for the health page. The UI and job never crash on a source failure.
 - Show **data age** wherever data appears ("injuries as of 08:12"). The digest says when it used stale data.
@@ -65,9 +67,10 @@ Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. 
 
 ## 5. Storage
 
-- `data/` is gitignored except `data/crosswalk_overrides.json`. Parquet datasets under `data/cache/` (append-only, versioned, written atomically); records in `data/app.sqlite` (WAL mode). Full layout and tables: `docs/ARCHITECTURE.md` §6, ADR 0003.
+- `data/` is gitignored except `data/crosswalk_overrides.json`. Three tiers: raw files in `data/raw/` (append-only, kept indefinitely), parquet datasets in `data/datasets/` (raw-derived ones rebuildable), records in `data/app.sqlite` (WAL). Full layout: `docs/ARCHITECTURE.md` §6, ADRs 0003 and 0008.
+- A weekly backup archives `data/raw` and `app.sqlite`; never delete raw files.
 - Schema changes go through numbered migrations (plain SQL files applied in order). Never edit a table by hand.
-- A snapshot is a manifest of dataset versions plus git commit, model version and config hash, enough to recompute a recommendation without copying data.
+- A snapshot is a manifest of raw-file IDs and dataset versions plus git commit, model version and config hash, enough to recompute a recommendation without copying data.
 - `Store.read_dataset(name, as_of)` is the single place that cuts off data after `as_of`; never filter by date ad hoc elsewhere.
 
 ## 6. Recommendations
@@ -76,10 +79,10 @@ Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. 
 - The UI and email only render recommendations; they never invent reasons or recompute values.
 - The daily job writes every recommendation to the log **before** sending it, and later records the outcome (followed or not, result).
 
-## 7. The daily job
+## 7. The jobs
 
-- One entry point, `python -m nfa.jobs.daily`, triggered by launchd and runnable by hand with `--as-of` and `--dry-run` (no email, no log writes).
-- Steps: refresh sources → build projections → per league and team: matchup, lineup check, streaming, opportunities → write log → render and send digest → record run. Each step records its own success, so a failure in one league does not stop the others.
+- `python -m nfa.jobs.daily` (launchd each morning, or by hand with `--as-of` and `--dry-run`) runs `record` → `build` → `advise` → `notify`. `advise` arrives in M4 (shadow mode), `notify` in M5. Other jobs: `snapshot` (game days, ~2 h), `backup` (weekly), `rebuild`, `backfill`, `backtest`, `login`, `draft_sheet`.
+- Each step records its own success; a failure in one league does not stop the others. Missed snapshot slots are recorded as gaps.
 - **Idempotent:** a run key per date prevents duplicate log entries and emails; re-running resumes from failed steps.
 - launchd: use `StartCalendarInterval` (launchd runs a missed job when the Mac wakes). If the run happens after the first game lock, mark the digest late.
 - Output a structured log line per step to `data/logs/` (rotated); the health page reads the last runs.
@@ -90,6 +93,7 @@ Each is a `typing.Protocol` in `domain/interfaces.py`, implemented by adapters. 
 - Tokens, client ID/secret and SMTP credentials live in the macOS Keychain (via `keyring`) or a gitignored file outside `src/`. Commit `config.example.toml` with placeholders.
 - Never print, log or commit secrets. Redact `Authorization` headers and tokens from errors and recorded fixtures.
 - Refresh tokens automatically; when refresh fails, the health page and digest say "Yahoo login needed" instead of failing silently.
+- The Yahoo app is a Confidential Client with Fantasy Sports – Read only; redirect `https://localhost:8765/callback`. Keychain service `nba-fantasy-assistant`, accounts `yahoo_client_id`, `yahoo_client_secret`, `yahoo_tokens`, `smtp_password`. Check that an entry exists with `security find-generic-password -s … -a …` (no `-w`); never read or print values.
 
 ## 9. Testing
 
@@ -97,7 +101,7 @@ Details and patterns in `references/testing.md`. In short:
 
 - `pytest`, no network ever (enforce with a fixture that blocks sockets).
 - Domain: small hand-built inputs, one focused test per rule, named after the behavior (`test_fg_pct_uses_summed_makes_and_attempts`).
-- Adapters: parse recorded fixtures into domain types.
+- Parsers: run recorded raw files through `parse`. Fetchers: test `requests(scope)`; never call the network.
 - Services: fake adapters implementing the interfaces.
 - Backtests: a test proving data after `as_of` is invisible.
 
@@ -126,4 +130,5 @@ Details and patterns in `references/testing.md`. In short:
 - [ ] New data shows its age; source failures degrade gracefully and appear on the health page
 - [ ] Recommendations include numeric reasons and are logged with a snapshot
 - [ ] Domain rules (skill `nba-fantasy-domain`) respected, especially ratio categories and usable games
+- [ ] Parsers are pure; any new non-refetchable dataset is in `retain_raw`
 - [ ] Docs updated if a decision or requirement changed
