@@ -41,13 +41,19 @@ Each item: **Answer**, **Evidence** (raw file IDs, numbers), **Recommendation**.
 **Code finding:** `http.get` raises `AuthError` for any 401/403, but for unauthenticated sources (cdn.nba.com) a 403 is a block, not bad credentials. M1: raise `AuthError` only for sources that authenticate; treat other 403s as `FetchError`.
 
 ## Injury source comparison
+
+First sample 2026-10-02 (preseason, one game on the latest report). The comparison continues on game days; Yahoo joins after Fantasy API approval.
+
 | Source | Players with status | First to show changes | Name matching | Parse effort | Notes |
 |---|---|---|---|---|---|
-| Official NBA report | | | | | |
-| ESPN JSON | | | | | |
-| Yahoo status | | | | | |
+| Official NBA report | 5 (BOS@DET, 10/01 12:56 PM ET) | (needs more runs) | "Last, First" incl. suffixes ("Cenac Jr., Christopher") | Medium: positioned-text PDF, not a table; parse words by header column x-position; reasons can wrap onto lines above/below the player row | Game-specific statuses incl. Questionable and Rest; report time in the header and file name |
+| ESPN JSON | 59 (45 Day-To-Day, 14 Out) | (needs more runs) | "First Last" display names | Low: plain JSON with status, note and date | Listed **none** of the 5 official-report players; some entries are stale (Summer League notes from July still Day-To-Day) |
+| Yahoo status | blocked (Fantasy API approval pending) | | Yahoo player keys | Low (comes with roster/player data) | |
 
-**Choice:**
+- Official report URL: the new season's listing page (`official.nba.com/nba-injury-report-2026-27-season/`) returns 404 before the season; the previous season's page links to the latest PDF (`ak-static.cms.nba.com/referee/injury/Injury-Report_YYYY-MM-DD_HH_MMPM.pdf`). Only the latest PDF is linked.
+- Evidence: `nba_injury_report/report/2026-10-02/113123-Injury-Report_2026-10-01_12_45PM.pdf.pdf.gz`, `espn/injuries/2026-10-02/113125-nba.json.gz`, `data/spike/injury_comparison.csv`.
+
+**Provisional choice:** the **official NBA report** as the primary `InjuryFeed` (complete game-day statuses), with ESPN as a secondary source for notes and long-term injuries (filtered by date). Confirm after a week of regular-season runs (target end of comparison: 2026-10-27), including Yahoo once approved.
 
 ## Crosswalk
 - Rostered Yahoo players:
