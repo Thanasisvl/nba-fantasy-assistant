@@ -1,6 +1,6 @@
 # M0 findings
 
-Status: in progress. NBA probe run 2026-10-02; Yahoo blocked pending Fantasy API approval (see Yahoo).
+Status: in progress. NBA probe run 2026-10-02; Yahoo blocked pending Fantasy API approval (see Yahoo); ESPN verified as the fallback platform (see Alternative platforms).
 Spec: `docs/superpowers/specs/2026-10-02-m0-spike-design.md`
 
 Each item: **Answer**, **Evidence** (raw file IDs, numbers), **Recommendation**.
@@ -55,9 +55,55 @@ First sample 2026-10-02 (preseason, one game on the latest report). The comparis
 
 **Provisional choice:** the **official NBA report** as the primary `InjuryFeed` (complete game-day statuses), with ESPN as a secondary source for notes and long-term injuries (filtered by date). Confirm after a week of regular-season runs (target end of comparison: 2026-10-27), including Yahoo once approved.
 
+## Alternative platforms (Yahoo contingency)
+
+Checked 2026-10-02 because Yahoo Fantasy API access is pending. **Decision rule:** if Yahoo has not approved by **2026-10-16**, M1 uses ESPN for league data; NBA stats and injuries are recorded from day one either way.
+
+| Platform | Access | H2H categories | Verdict |
+|---|---|---|---|
+| **ESPN** | Unofficial JSON API (`lm-api-reads.fantasy.espn.com`); private leagues need the user's `espn_s2` + `SWID` cookies | Yes (each category / most categories) | **Fallback.** Verified end to end (below). |
+| Fantrax | Small semi-official read API (`/fxea/general/...`): player IDs, ADP, league info by ID work without login; matchups/free agents need the unofficial logged-in route | Yes (most customizable) | Second fallback, mainly for the family league |
+| Sleeper | Official, free, read-only, no auth (`api.sleeper.app`) | **No for season-long leagues as tested**: test league "The League that Tests" (6 teams) has points scoring only (`scoring_settings` pts/reb/ast/…, no FG%/FT%); 9-cat appears only in the Ring Chaser mini-game | Rejected: wrong format. Useful extras: injury status, other sites' IDs (incl. `yahoo_id`, `espn_id`), undocumented season stats and projections endpoints |
+| CBS Sports | Deprecated API; 406 without a token | Yes | Rejected |
+
+### ESPN verification
+
+Test league **"The League that Tests"** (ID `1377295221`, ESPN season `2027` = NBA 2026-27, 6 teams, private), read with cookies from the Keychain (accounts `espn_s2`, `espn_swid`).
+
+- **Settings (`view=mSettings`):** `scoringType: H2H_CATEGORY`; 9 categories after adding TO: PTS, REB, AST, STL, BLK, 3PM, FG%, FT%, TO (`isReverseItem: true`). Stat IDs: 0 PTS, 1 BLK, 2 STL, 3 AST, 6 REB, 11 TO, 13/14 FGM/FGA, 15/16 FTM/FTA, 17 3PM, 19 FG%, 20 FT%. Lineup slots (ids): PG 0, SG 1, SF 2, PF 3, C 4, G 5, F 6, UTIL 11 (×3), bench 12 (×3), IR 13 (×1). `lineupLocktimeType: INDIVIDUAL_GAME`. Schedule: 19 weekly matchup periods, 4 playoff teams, 2-week playoff rounds, 167 scoring periods (days). `matchupTieRule: NONE`.
+- **Acquisitions:** `acquisitionLimit: -1` (season unlimited), `matchupAcquisitionLimit: 1` with `matchupLimitPerScoringPeriod: true` (most likely 1 add per day), traditional waivers 24 h, `waiverProcessDays: ["SUNDAY"]` at 08:00, `isBenchUnlimited: true` (conflicts with 3 bench slots; to check in the UI).
+- **Players (`view=kona_player_info` + `x-fantasy-filter` header):** 200 free agents sorted by % owned; per player `ownership.percentOwned` and `percentStarted`, `injuryStatus` (ACTIVE / DAY_TO_DAY / OUT), `draftRanksByRankType` (STANDARD, ROTO), `seasonOutlook`, `lastNewsDate`, actual stats (2025-26, 2026-27 splits) and **projections for 2026-27 including FGM/FGA, FTM/FTA and TO**. ESPN player IDs only (no NBA.com ID).
+- **League views:** `mRoster` (6 teams), `mMatchup` (57 scheduled matchups), `mTransactions2` all respond; empty before the draft.
+- **Auth behaviour:** the 401 `AUTH_LEAGUE_NOT_VISIBLE` body is identical for no cookies, a bad `espn_s2` or a single cookie. The fan endpoint (`fan.api.espn.com/apis/v2/fans/{SWID}`) lists the user's leagues with only a valid `SWID`, which is a useful check of the league ID.
+
+### ESPN vs Yahoo: what the design must handle
+
+| Area | Yahoo | ESPN | Requirement |
+|---|---|---|---|
+| Add limits | usually per week | per day and/or per matchup, plus per season | Read the limit type; the streaming ranker must not assume weekly |
+| Injured slots | IL and IL+ (IL+ accepts Day-to-Day) | IR | Read which statuses each slot accepts |
+| Ties | ties possible | `matchupTieRule` | Win probabilities apply the league's tie rule |
+| Injury note | text note | status only in this view (news separate) | Notes come from the injury feed |
+| History | roster by date | roster by scoring period (day) | Map day ↔ scoring period in the adapter |
+| % owned / projections | % owned; projections unverified | % owned + % started; projections with makes/attempts | ESPN projections can serve as the platform baseline (ADR 0010) |
+| Access | official OAuth after approval | unofficial; session cookies expire, logout may invalidate them | Health page shows "ESPN cookies need refreshing" on 401 |
+
 ## Crosswalk
 - Rostered Yahoo players:
 - Auto-matched (rate):
 - Ambiguous / unmatched and proposed overrides:
+
+## Tooling notes
+
+- `security add-generic-password ... -w` silently truncates the typed value to **128 characters**. `espn_s2` is about 316 characters, so it must be stored through Python instead: `uv run python -c "import getpass, keyring; keyring.set_password('nba-fantasy-assistant', 'espn_s2', getpass.getpass('espn_s2 (hidden): ').strip())"`. Yahoo client ID/secret and `SWID` are under 128.
+- On this Mac `SSL_CERT_FILE` points at one corporate CA, which breaks `uv` and `gh`; run them as `env -u SSL_CERT_FILE …`.
+
+## Doc changes needed (from findings so far)
+
+- PLAN: Yahoo approval risk and the 2026-10-16 decision rule; ESPN as fallback platform (new ADR).
+- PLAN FR-D2/FR-E3 and the domain skill: H2H **Each Category** optimizes expected categories won; **Most Categories** optimizes the probability of winning the majority.
+- PLAN/ARCHITECTURE: add-limit types (per day / per matchup / per season), injured-slot eligibility per platform, league tie rule.
+- ADR 0009: injury feed provisional choice (official report primary, ESPN secondary).
+- M1: `http.get` should raise `AuthError` only for authenticated sources.
 
 ## Doc changes made
