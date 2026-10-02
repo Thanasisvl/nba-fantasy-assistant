@@ -1,6 +1,6 @@
 # Formulas and worked examples
 
-Starting points, not final answers. Every constant here is a default to be tuned by the backtest harness (M2), and every change must be checked for calibration.
+Starting points, not final answers. Every constant here is a default to be tuned by the backtest harness (M3), and every change must be checked for calibration.
 
 ## Contents
 
@@ -69,7 +69,7 @@ blended = (n × current + k × prior) / (n + k)
 
 - `prior` = last season's value; for rookies or big role changes, a role/position average.
 - `k` is the number of games at which current and prior count equally. Stats that stabilize fast get a small `k`; noisy ones a large `k`. Reasonable starting points to tune: minutes 3–5, usage/points rate 8–12, rebounds 8–12, assists 10–15, steals/blocks 15–25, FT% and 3P% expressed in attempts (≈100+ attempts).
-- These `k` values are placeholders for the NBA, not derived from data yet. Replace them with values tuned by the M2 backtest, and confirm the choice with the user. Do not take constants from the EuroLeague tool.
+- These `k` values are placeholders for the NBA, not derived from data yet. Replace them with values tuned by the M3 backtest, and confirm the choice with the user. Do not take constants from the EuroLeague tool.
 
 ## 5. Window projections
 
