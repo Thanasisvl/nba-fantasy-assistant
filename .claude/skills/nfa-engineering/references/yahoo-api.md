@@ -10,7 +10,7 @@ Working notes for the Yahoo adapter. Items marked (verify) must be confirmed in 
   - Token: `POST https://api.login.yahoo.com/oauth2/get_token` with the code (and later the refresh token), HTTP Basic auth with client ID and secret.
 - Access tokens expire after about an hour; refresh tokens are long-lived. Store both, refresh before expiry, and handle refresh failure by asking for a new login.
 - Redirect URI: Yahoo is strict about redirect URIs (HTTPS; `oob` for out-of-band copy-paste has historically been supported) (verify). For a local tool, the copy-paste code flow is acceptable for a one-time login.
-- Libraries such as `yahoo_oauth` / `yfpy` / `yahoo_fantasy_api` exist. Using one for auth is fine; still wrap everything behind our `FantasyPlatform` adapter so the library never leaks into services.
+- **Decision (ADR 0006): we write our own small OAuth module** (`adapters/platforms/yahoo/auth.py`) with `requests` and `keyring`, rather than `yahoo_oauth`. Libraries like `yfpy` / `yahoo_fantasy_api` are useful references for endpoint shapes, but are not dependencies.
 
 ## Base URL and format
 
