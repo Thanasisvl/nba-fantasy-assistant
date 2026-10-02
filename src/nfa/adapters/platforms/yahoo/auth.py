@@ -24,6 +24,9 @@ CLIENT_ID_ACCOUNT = "yahoo_client_id"
 CLIENT_SECRET_ACCOUNT = "yahoo_client_secret"
 TOKENS_ACCOUNT = "yahoo_tokens"
 REFRESH_MARGIN = timedelta(minutes=5)
+SCOPE = (
+    "fspt-r"  # Fantasy Sports read-only; without it Yahoo may issue a token with no Fantasy access
+)
 LOGIN_HINT = "run `uv run python -m nfa.jobs.login`"
 
 
@@ -52,7 +55,12 @@ class Tokens:
 
 def authorize_url(client_id: str) -> str:
     query = urlencode(
-        {"client_id": client_id, "redirect_uri": REDIRECT_URI, "response_type": "code"}
+        {
+            "client_id": client_id,
+            "redirect_uri": REDIRECT_URI,
+            "response_type": "code",
+            "scope": SCOPE,
+        }
     )
     return f"{AUTHORIZE_URL}?{query}"
 

@@ -69,6 +69,7 @@ def test_authorize_url() -> None:
         "client_id": ["cid"],
         "redirect_uri": [REDIRECT_URI],
         "response_type": ["code"],
+        "scope": ["fspt-r"],
     }
 
 
