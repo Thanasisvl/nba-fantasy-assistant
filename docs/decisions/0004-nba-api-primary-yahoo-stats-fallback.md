@@ -1,6 +1,6 @@
 # 0004. nba_api as primary stats source, Yahoo stats as fallback
 
-Date: 2026-10-01 · Status: accepted (injury source pending M0)
+Date: 2026-10-01 · Status: accepted; injury part superseded by 0009
 
 ## Context
 
@@ -10,7 +10,7 @@ Projections need complete game logs with makes and attempts, minutes, and the fu
 
 - `nba_api` is the primary source for players, game logs and schedule, used gently from my home IP with aggressive caching.
 - Yahoo player stats by date are the fallback for recent game lines when `nba_api` fails.
-- Injury statuses come through `StatsSource.injuries()`; the provider (official NBA injury report, ESPN, or Yahoo status only) is chosen in the M0 spike and combined with `nba_api` in a composite source.
+- Injury statuses come through the separate `InjuryFeed` interface (ADR 0009); the provider is chosen in the M0 spike.
 
 ## Consequences
 
