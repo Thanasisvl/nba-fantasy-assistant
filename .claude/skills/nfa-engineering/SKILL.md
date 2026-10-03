@@ -13,6 +13,7 @@ The design goal is **growth without rewrites** (objective O4 in `docs/PLAN.md`):
 | `references/nba-api.md` | Touching `nba_api`: game logs, schedule, player IDs, throttling, failures |
 | `references/domain-types.md` | Creating or changing domain types, interfaces, the recommendation object or the store schema |
 | `references/testing.md` | Writing tests, recording fixtures, testing adapters, backtests or the daily job |
+| `references/python-for-java-devs.md` | **Every code change.** Typing rules, the plain Java-like style, and how to explain Python, design and UI to the owner (a senior QA automation engineer, strong in Java and testing, newer to Python, application design and UI) |
 
 ## 1. Layers and dependency direction
 
@@ -108,8 +109,9 @@ Details and patterns in `references/testing.md`. In short:
 ## 10. Tooling and style
 
 - Python 3.12+, managed with `uv` (`pyproject.toml`, lockfile committed).
-- `ruff` for lint and format, `pyright` (or `mypy --strict` on `domain/`) for types, `pytest` for tests. Run all three before calling work done.
-- Type hints everywhere; frozen `dataclass`es for domain types; `Enum`s for fixed vocabularies (categories direction, slot types, statuses, actions).
+- `ruff` for lint and format, `pyright` in **strict** mode for types, `pytest` for tests. Run all three before calling work done.
+- Type hints everywhere, no `Any` past an untyped boundary; frozen `dataclass`es for domain types; `Enum`s for fixed vocabularies (categories direction, slot types, statuses, actions). Full rules and the plain, Java-like style: `references/python-for-java-devs.md` (ADR 0011).
+- **Explain as you go.** The owner is a senior QA automation engineer (Java, Spring, testing), newer to Python, application design and UI. When a change uses a Python idiom, a design concept or a UI concept they may not know, explain it briefly in the reply, tied to Java or testing where possible, and log it in that reference's "Explained so far" list.
 - pandas/numpy are fine for bulk stats inside adapters and domain computations; convert to typed objects at module boundaries rather than passing loosely shaped DataFrames around.
 - Small modules with one responsibility. A file past ~400 lines is probably doing two things.
 - Comments explain why, not what. Docstrings on public functions state units (per game, per window, per 36).
@@ -124,7 +126,8 @@ Details and patterns in `references/testing.md`. In short:
 
 ## Definition of done
 
-- [ ] Behavior covered by tests; `pytest`, `ruff`, type checker all pass
+- [ ] Behavior covered by tests; `pytest`, `ruff`, `pyright` (strict) all pass
+- [ ] New Python, design or UI concepts explained in the reply and logged in `references/python-for-java-devs.md` §5
 - [ ] No network in tests; new external responses recorded as fixtures with secrets removed
 - [ ] Domain code has no I/O and no implicit "now"
 - [ ] New data shows its age; source failures degrade gracefully and appear on the health page

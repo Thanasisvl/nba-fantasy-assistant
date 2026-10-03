@@ -13,7 +13,7 @@ class FetchRequest:
     source: str  # "yahoo", "nba_api", "cdn_nba", "espn", "nba_injury_report"
     dataset: str  # "league_settings", "rosters", "game_logs", ...
     key: str  # e.g. "466.l.12345.t.3;date=2026-10-21"
-    params: Mapping[str, str] = field(default_factory=dict)
+    params: Mapping[str, str] = field(default_factory=dict[str, str])
 
 
 @dataclass(frozen=True)

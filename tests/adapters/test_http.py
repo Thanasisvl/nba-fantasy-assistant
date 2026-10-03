@@ -1,18 +1,19 @@
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 import requests
 
 from nfa.adapters import http
 from nfa.adapters.http import AuthError, FetchError, Throttle
-from nfa.domain.raw import FetchRequest
+from nfa.domain.raw import FetchRequest, RawResponse
 from tests.fakes import FakeResponse, FakeSession, no_wait_throttle
 
 REQ = FetchRequest(source="yahoo", dataset="league_settings", key="466.l.1")
 NOW = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
 
 
-def call(session: FakeSession, sleeps: list[float] | None = None, **kwargs):
+def call(session: FakeSession, sleeps: list[float] | None = None, **kwargs: Any) -> RawResponse:
     recorded = sleeps if sleeps is not None else []
     return http.get(
         REQ,

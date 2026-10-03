@@ -3,10 +3,12 @@
 import json
 import re
 from collections.abc import Iterable
-from typing import Any
 
 PLACEHOLDER_KEYS = frozenset({"nickname", "guid", "email", "image_url", "url"})
 SECRET_KEYS = frozenset({"access_token", "refresh_token", "authorization", "client_secret"})
+# Any value json.loads can return.
+type Json = None | bool | int | float | str | list[Json] | dict[str, Json]
+
 TOKENISH = re.compile(r"eyJ[A-Za-z0-9_-]{10,}|[A-Za-z0-9_-]{60,}")
 
 
@@ -28,13 +30,13 @@ class Scrubber:
             self._aliases[key] = f"{kind}-{self._counts[kind]}"
         return self._aliases[key]
 
-    def scrub(self, obj: Any, team_context: bool = False) -> Any:
+    def scrub(self, obj: Json, team_context: bool = False) -> Json:
         if isinstance(obj, list):
             in_team = team_context or any(isinstance(e, dict) and "team_key" in e for e in obj)
             return [self.scrub(e, in_team) for e in obj]
         if isinstance(obj, dict):
             is_team = team_context or "team_key" in obj
-            out: dict[str, Any] = {}
+            out: dict[str, Json] = {}
             for key, value in obj.items():
                 if key.lower() in SECRET_KEYS:
                     raise UnsafeFixtureError(f"secret-like key {key!r} found")
@@ -61,7 +63,7 @@ def check_safe(text: str, forbidden: Iterable[str]) -> None:
 
 def scrub_payload(payload: bytes, forbidden: Iterable[str]) -> bytes:
     try:
-        data = json.loads(payload)
+        data: Json = json.loads(payload)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise UnsafeFixtureError("payload is not JSON; review and copy it by hand") from exc
     cleaned = json.dumps(Scrubber().scrub(data), sort_keys=True, indent=1)
