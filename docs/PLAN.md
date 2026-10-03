@@ -24,7 +24,7 @@ A personal assistant for Yahoo NBA fantasy leagues (H2H categories). It is a sep
 | Timeline | 2026-27 is a test bed; v1 targets the 2027-28 drafts (ADR 0007). |
 | Data collection | Daily recorder from M1: injuries, Yahoo league state, Yahoo ranks and projections, my decisions (ADR 0007). |
 | Stats source | `nba_api` (stats.nba.com) from my home IP, cached. Yahoo player stats as fallback. |
-| Tooling | Python 3.12+, `uv`, `ruff`, `pyright`, `pytest`. |
+| Tooling | Python 3.12+, `uv`, `ruff`, `pyright` (strict), `pytest`. Python kept over Java/Spring; code written for a Java reader (ADR 0011). |
 | Storage | Raw responses + parquet datasets + SQLite records (ADRs 0003, 0008). Weekly backup. |
 | Yahoo OAuth | Own small module; Confidential Client; redirect `https://localhost:8765/callback`; credentials and tokens in the Keychain, service `nba-fantasy-assistant` (ADR 0006). |
 | Injury source | `InjuryFeed` interface; provider chosen in the M0 spike (ADR 0009). |

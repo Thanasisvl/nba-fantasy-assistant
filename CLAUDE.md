@@ -16,6 +16,7 @@ Personal assistant for Yahoo NBA fantasy leagues (H2H categories). Single user, 
 - **Secrets stay out of git.** OAuth tokens, client secrets and SMTP passwords live in the macOS Keychain or a gitignored file. Never print or log them.
 - **Tests never hit the network.** Use recorded fixtures.
 - **Stay in scope.** Build what the current milestone in `docs/PLAN.md` needs. Backlog items wait until asked for. If a change alters a decision in the plan, update the plan in the same change.
+- **Explain as we go.** The owner is a senior QA automation engineer, not a developer by trade: strong in Java, Spring and testing; newer to Python, application design and UI. Keep the code typed (pyright strict) and plain, and explain Python idioms, design concepts and UI concepts as they come up. See `.claude/skills/nfa-engineering/references/python-for-java-devs.md` and ADR 0011.
 - **Personal use only.** The data sources (`nba_api`, Yahoo) are used under personal-use terms. Do not add anything that redistributes their data publicly.
 
 ## Reference project

@@ -40,4 +40,4 @@ ignore = ["E501"]  # the formatter handles length; long strings and URLs are fin
 [tool.pyright]
 include = ["src", "tests"]
 pythonVersion = "3.12"
-typeCheckingMode = "standard"
+typeCheckingMode = "strict"
