@@ -1,6 +1,6 @@
 # M0 findings
 
-Status: in progress. NBA probe run 2026-10-02; Yahoo blocked pending Fantasy API approval (see Yahoo); ESPN verified as the fallback platform (see Alternative platforms).
+Status: in progress. NBA probe run 2026-10-02; Yahoo blocked pending Fantasy API approval (see Yahoo); ESPN verified as the fallback platform (see Alternative platforms); crosswalk measured on ESPN rosters 2026-10-03 (see Crosswalk).
 Spec: `docs/superpowers/specs/2026-10-02-m0-spike-design.md`
 
 Each item: **Answer**, **Evidence** (raw file IDs, numbers), **Recommendation**.
@@ -74,6 +74,13 @@ Test league **"The League that Tests"** (ID `1377295221`, ESPN season `2027` = N
 - **Acquisitions:** `acquisitionLimit: -1` (season unlimited), `matchupAcquisitionLimit: 1` with `matchupLimitPerScoringPeriod: true` (most likely 1 add per day), traditional waivers 24 h, `waiverProcessDays: ["SUNDAY"]` at 08:00, `isBenchUnlimited: true` (conflicts with 3 bench slots; to check in the UI).
 - **Players (`view=kona_player_info` + `x-fantasy-filter` header):** 200 free agents sorted by % owned; per player `ownership.percentOwned` and `percentStarted`, `injuryStatus` (ACTIVE / DAY_TO_DAY / OUT), `draftRanksByRankType` (STANDARD, ROTO), `seasonOutlook`, `lastNewsDate`, actual stats (2025-26, 2026-27 splits) and **projections for 2026-27 including FGM/FGA, FTM/FTA and TO**. ESPN player IDs only (no NBA.com ID).
 - **League views:** `mRoster` (6 teams), `mMatchup` (57 scheduled matchups), `mTransactions2` all respond; empty before the draft.
+- **After the drafts (2026-10-03):** both ESPN leagues are drafted and fully readable with my cookies, including every team's roster (not only mine):
+  - Family league `1377295221`: 6 teams × 13, 9-cat.
+  - Public league "Phoenix Beginner H2H Categories League" (`1187400599`):
+    - 10 teams × 13, snake draft, 4 playoff teams
+    - **8-cat (no TO)**, same lineup slots as the family league
+  - The fan endpoint lists both; its `abbrev` is upper case (`FBA`).
+- **Which team is mine:** the team whose `owners` contains my `SWID`. Every other team is an opponent, so no "my teams" setting is needed.
 - **Auth behaviour:** the 401 `AUTH_LEAGUE_NOT_VISIBLE` body is identical for no cookies, a bad `espn_s2` or a single cookie. The fan endpoint (`fan.api.espn.com/apis/v2/fans/{SWID}`) lists the user's leagues with only a valid `SWID`, which is a useful check of the league ID.
 
 ### ESPN vs Yahoo: what the design must handle
@@ -89,14 +96,28 @@ Test league **"The League that Tests"** (ID `1377295221`, ESPN season `2027` = N
 | Access | official OAuth after approval | unofficial; session cookies expire, logout may invalidate them | Health page shows "ESPN cookies need refreshing" on 401 |
 
 ## Crosswalk
-- Rostered Yahoo players:
-- Auto-matched (rate):
-- Ambiguous / unmatched and proposed overrides:
+
+**Measured on ESPN** (2026-10-03), because Yahoo is blocked. Yahoo will be measured once approved.
+- **Method:** the `crosswalk_probe` normalisation (accents, Jr./III suffixes, punctuation, case) matches names against `CommonAllPlayers` for 2026-27 (620 players). The team is used only to break ties.
+- **Rostered ESPN players, both leagues:** 130 unique. **Auto-matched: 129 (99.2%)**. Ambiguous: 0. The family league alone matched 78/78.
+- **Unmatched:** Russell Westbrook. ESPN shows him with team `FA` (unsigned), and he is not on the NBA current-player list. This is not a name problem.
+- **Recommendation:**
+  - The rule-based matching is enough; the 98% exit criterion is met on ESPN.
+  - Treat unsigned players as their own state: matched once they sign, never silently dropped, and listed on the health page meanwhile.
+  - Match against the full player list (`is_only_current_season=0`) or keep previously matched IDs, so a player who becomes unsigned keeps his NBA ID.
 
 ## Tooling notes
 
 - `security add-generic-password ... -w` silently truncates the typed value to **128 characters**. `espn_s2` is about 316 characters, so it must be stored through Python instead: `uv run python -c "import getpass, keyring; keyring.set_password('nba-fantasy-assistant', 'espn_s2', getpass.getpass('espn_s2 (hidden): ').strip())"`. Yahoo client ID/secret and `SWID` are under 128.
-- On this Mac `SSL_CERT_FILE` points at one corporate CA, which breaks `uv` and `gh`; run them as `env -u SSL_CERT_FILE …`.
+- If `SSL_CERT_FILE` points at a custom CA bundle, `uv` and `gh` fail with certificate errors; run them as `env -u SSL_CERT_FILE …`.
+- **Intermittent TLS errors from stats.nba.com (2026-10-03).** For a while, calls to stats.nba.com failed, with these symptoms:
+  - "self-signed certificate in certificate chain" with the default certificates
+  - a read timeout with a custom CA bundle
+
+  Minutes later the normal certificate (DigiCert) was back and `nba_api` answered in 0.5 s. ESPN was unaffected.
+  - `requests` ignores `SSL_CERT_FILE`; it uses `REQUESTS_CA_BUNDLE` or certifi.
+  - A bare `requests` call to stats.nba.com without `nba_api`'s browser-like headers hangs until it times out.
+  - **Consequence for M1:** the recorder must expect intermittent source failures. It retries later in the day, catches up missed days on the next run, and records gaps on the health page.
 
 ## Doc changes needed (from findings so far)
 
@@ -105,5 +126,8 @@ Test league **"The League that Tests"** (ID `1377295221`, ESPN season `2027` = N
 - PLAN/ARCHITECTURE: add-limit types (per day / per matchup / per season), injured-slot eligibility per platform, league tie rule.
 - ADR 0009: injury feed provisional choice (official report primary, ESPN secondary).
 - M1: `http.get` should raise `AuthError` only for authenticated sources.
+- M1: recorder retries and catch-up of missed days after intermittent failures (Tooling notes).
+- ARCHITECTURE (crosswalk): unsigned players as an explicit state; keep known NBA IDs when a player becomes unsigned.
+- ARCHITECTURE (platform adapters): "my team" is the team owned by the logged-in account. Categories are read per league (8-cat and 9-cat in use).
 
 ## Doc changes made
